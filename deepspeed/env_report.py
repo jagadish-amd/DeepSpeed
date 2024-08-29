@@ -107,7 +107,7 @@ def installed_cann_version():
     return cann_version
 
 
-def get_shm_size():
+def get_shm_size(hip_version=None):
     try:
         shm_stats = os.statvfs('/dev/shm')
     except (OSError, FileNotFoundError, ValueError, AttributeError):
@@ -120,9 +120,10 @@ def get_shm_size():
         warn.append(
             f" {YELLOW} [WARNING] /dev/shm size might be too small, if running in docker increase to at least --shm-size='1gb' {END}"
         )
-        if get_accelerator().communication_backend_name() == "nccl":
-            warn.append(
-                f" {YELLOW} [WARNING] see more details about NCCL requirements: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html#sharing-data {END}"
+        if not hip_version:
+            if get_accelerator().communication_backend_name() == "nccl":
+                warn.append(
+                    f" {YELLOW} [WARNING] see more details about NCCL requirements: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html#sharing-data {END}"
             )
     return shm_hbytes, warn
 
@@ -139,6 +140,7 @@ def human_readable_size(size):
 def debug_report():
     max_dots = 33
 
+    hip_version = None
     report = [("torch install path", torch.__path__), ("torch version", torch.__version__),
               ("deepspeed install path", deepspeed.__path__),
               ("deepspeed info", f"{deepspeed.__version__}, {deepspeed.__git_hash__}, {deepspeed.__git_branch__}")]
@@ -157,7 +159,7 @@ def debug_report():
     else:
         report.extend([("deepspeed wheel compiled w.", f"torch {torch_info['version']} ")])
 
-    report.append(("shared memory (/dev/shm) size", get_shm_size()))
+    report.append(("shared memory (/dev/shm) size", get_shm_size(hip_version)))
 
     print("DeepSpeed general environment info:")
     for name, value in report:
